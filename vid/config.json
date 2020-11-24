@@ -1,0 +1,7 @@
+{
+  "name": "moderate-vid",
+  "stage": "poc",
+  "region": "ap-southeast-1",
+  "deploymentBucket": "moderate-sls-deploy",
+  "alertTopic": "moderate"
+}

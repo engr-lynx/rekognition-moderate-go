@@ -1,0 +1,127 @@
+service: ${file(./config.json):name}
+
+
+provider:
+  name: aws
+  runtime: go1.x
+
+  stage: ${opt:stage, file(./config.json):stage}
+  region: ${opt:region, file(./config.json):region}
+  deploymentBucket: ${file(./config.json):deploymentBucket}
+
+  logRetentionInDays: 1
+  stackTags:
+    SERVICE: ${self:service}
+
+
+custom:
+
+  appPath: /${self:service}/${self:provider.stage}
+  appNameStage: ${self:service}-${self:provider.stage}
+
+  minConfidenceParamName: ${self:custom.appPath}/MinConfidence
+
+  alertTopicName: ${file(./config.json):alertTopic}-${self:provider.stage}
+
+  srcBucketName: ${file(./config.json):srcBucket}-${self:provider.stage}
+
+  srcQueueRetentionPeriod: 172800 # 2 days
+  srcQueueMaxReceiveCount: 720 # 0.5 days
+  srcQueueName: ${self:custom.appNameStage}-src
+  dlQueueRetentionPeriod: 129600 # 1.5 days
+  dlQueueName: ${self:custom.appNameStage}-dl
+
+
+plugins:
+- serverless-iam-roles-per-function
+- serverless-pseudo-parameters
+- serverless-go-plugin
+
+
+resources:
+
+  Resources:
+
+    MinConfidenceParam:
+      Type: AWS::SSM::Parameter
+      Properties:
+        Name: ${self:custom.minConfidenceParamName}
+        Type: String
+        Value: '80'
+
+    SrcBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: ${self:custom.srcBucketName}
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            Principal:
+              Service: rekognition.amazonaws.com
+            Resource: arn:aws:s3:::${self:custom.srcBucketName}/*
+
+    SrcQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.srcQueueName}
+        MessageRetentionPeriod: ${self:custom.srcQueueRetentionPeriod}
+        RedrivePolicy:
+          deadLetterTargetArn: '#{DLQueue.Arn}'
+          maxReceiveCount: ${self:custom.srcQueueMaxReceiveCount}
+
+    SrcQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+        - '#{SrcQueue}'
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - sqs:SendMessage
+            Principal:
+              Service: s3.amazonaws.com
+            Resource: '#{SrcQueue.Arn}'
+            Condition:
+              ArnLike:
+                aws:SourceArn: arn:aws:s3:::${self:custom.srcBucketName}
+
+    DLQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.dlQueueName}
+        MessageRetentionPeriod: ${self:custom.dlQueueRetentionPeriod}
+
+
+functions:
+
+  moderateImage:
+    handler: ./moderateImage
+    memorySize: 768
+    timeout: 10
+    iamRoleStatements:
+    - Effect: Allow
+      Action:
+      - ssm:GetParameter
+      Resource: arn:aws:ssm:${self:provider.region}:#{AWS::AccountId}:parameter${self:custom.minConfidenceParamName}
+    - Effect: Allow
+      Action:
+      - s3:GetObject
+      Resource: arn:aws:s3:::${self:custom.srcBucketName}/*
+    - Effect: Allow
+      Action:
+      - rekognition:DetectModerationLabels
+      Resource: '*'
+    - Effect: Allow
+      Action:
+      - sns:Publish
+      Resource: arn:aws:sns:${self:provider.region}:#{AWS::AccountId}:${self:custom.alertTopicName}
+    environment:
+      MinConfidenceParamName: ${self:custom.minConfidenceParamName}
+      SrcBucketName: ${self:custom.srcBucketName}
+      AlertTopicArn: arn:aws:sns:${self:provider.region}:#{AWS::AccountId}:${self:custom.alertTopicName}
+    events:
+    - sqs:
+        arn: '#{SrcQueue.Arn}'

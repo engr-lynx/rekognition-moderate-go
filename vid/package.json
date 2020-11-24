@@ -1,0 +1,20 @@
+{
+  "name": "moderate-vid",
+  "version": "0.1.0",
+  "description": "This module provides video moderation functionalities.",
+  "devDependencies": {
+    "serverless-go-plugin": "^2.0.1",
+    "serverless-iam-roles-per-function": "^2.0.2",
+    "serverless-pseudo-parameters": "^2.5.0"
+  },
+  "repository": {
+    "type": "",
+    "url": ""
+  },
+  "keywords": [
+    "moderate",
+    "video"
+  ],
+  "author": "Leon Carlo Valencia",
+  "license": "ISC"
+}

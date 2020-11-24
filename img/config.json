@@ -1,0 +1,8 @@
+{
+  "name": "moderate-img",
+  "stage": "poc",
+  "region": "ap-southeast-1",
+  "deploymentBucket": "moderate-sls-deploy",
+  "alertTopic": "moderate",
+  "srcBucket": "moderate-img"
+}
