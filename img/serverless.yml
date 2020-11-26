@@ -16,14 +16,22 @@ provider:
 
 custom:
 
-  appPath: /${self:service}/${self:provider.stage}
-  appNameStage: ${self:service}-${self:provider.stage}
+  parameters:
+    Stage:
+      Type: String
+      Default: ${self:provider.stage}
+      Description: the stage for deployment (poc, dev, prod, etc)
+    AlertTopic:
+      Type: String
+      Default: ${file(./config.json):alertTopic}
+      Description: the topic name to which this service will publish moderation alerts
+
+  appPath: /${self:service}/#{Stage}
+  appNameStage: ${self:service}-#{Stage}
 
   minConfidenceParamName: ${self:custom.appPath}/MinConfidence
 
-  alertTopicName: ${file(./config.json):alertTopic}-${self:provider.stage}
-
-  srcBucketName: ${file(./config.json):srcBucket}-${self:provider.stage}
+  srcBucketName: ${file(./config.json):srcBucket}-#{Stage}
 
   srcQueueRetentionPeriod: 172800 # 2 days
   srcQueueMaxReceiveCount: 720 # 0.5 days
@@ -35,6 +43,7 @@ custom:
 plugins:
 - serverless-iam-roles-per-function
 - serverless-pseudo-parameters
+- serverless-parameters
 - serverless-go-plugin
 
 
@@ -117,11 +126,11 @@ functions:
     - Effect: Allow
       Action:
       - sns:Publish
-      Resource: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:${self:custom.alertTopicName}
+      Resource: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
     environment:
       MinConfidenceParamName: ${self:custom.minConfidenceParamName}
       SrcBucketName: ${self:custom.srcBucketName}
-      AlertTopicArn: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:${self:custom.alertTopicName}
+      AlertTopicArn: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
     events:
     - sqs:
         arn: '#{SrcQueue.Arn}'

@@ -3,6 +3,6 @@
   "stage": "poc",
   "region": "ap-southeast-1",
   "deploymentBucket": "moderate-sls-deploy",
-  "alertTopic": "moderate",
+  "alertTopic": "moderate-poc",
   "srcBucket": "moderate-img"
 }

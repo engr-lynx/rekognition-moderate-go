@@ -16,14 +16,22 @@ provider:
 
 custom:
 
-  appPath: /${self:service}/${self:provider.stage}
-  appNameStage: ${self:service}-${self:provider.stage}
+  parameters:
+    Stage:
+      Type: String
+      Default: ${self:provider.stage}
+      Description: the stage for deployment (poc, dev, prod, etc)
+    AlertTopic:
+      Type: String
+      Default: ${file(./config.json):alertTopic}
+      Description: the topic name to which this service will publish moderation alerts
+
+  appPath: /${self:service}/#{Stage}
+  appNameStage: ${self:service}-#{Stage}
 
   minConfidenceParamName: ${self:custom.appPath}/MinConfidence
 
   resultTopicName: ${self:custom.appNameStage}
-
-  alertTopicName: ${file(./config.json):alertTopic}-${self:provider.stage}
 
   srcExpirationInDays: 2
   srcBucketName: ${self:custom.appNameStage}
@@ -38,6 +46,7 @@ custom:
 plugins:
 - serverless-iam-roles-per-function
 - serverless-pseudo-parameters
+- serverless-parameters
 - serverless-go-plugin
 
 
@@ -184,9 +193,9 @@ functions:
     - Effect: Allow
       Action:
       - sns:Publish
-      Resource: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:${self:custom.alertTopicName}
+      Resource: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
     environment:
-      AlertTopicArn: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:${self:custom.alertTopicName}
+      AlertTopicArn: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
     events:
     - sns:
         arn: !Ref ResultTopic
