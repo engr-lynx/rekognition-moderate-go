@@ -69,7 +69,7 @@ resources:
             - s3:GetObject
             Principal:
               Service: rekognition.amazonaws.com
-            Resource: arn:aws:s3:::${self:custom.srcBucketName}/*
+            Resource: arn:#{AWS::Partition}:s3:::${self:custom.srcBucketName}/*
 
     SrcQueue:
       Type: AWS::SQS::Queue
@@ -95,7 +95,7 @@ resources:
             Resource: '#{SrcQueue.Arn}'
             Condition:
               ArnLike:
-                aws:SourceArn: arn:aws:s3:::${self:custom.srcBucketName}
+                aws:SourceArn: arn:#{AWS::Partition}:s3:::${self:custom.srcBucketName}
 
     DLQueue:
       Type: AWS::SQS::Queue
@@ -114,11 +114,11 @@ functions:
     - Effect: Allow
       Action:
       - ssm:GetParameter
-      Resource: arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter${self:custom.minConfidenceParamName}
+      Resource: arn:#{AWS::Partition}:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter${self:custom.minConfidenceParamName}
     - Effect: Allow
       Action:
       - s3:GetObject
-      Resource: arn:aws:s3:::${self:custom.srcBucketName}/*
+      Resource: arn:#{AWS::Partition}:s3:::${self:custom.srcBucketName}/*
     - Effect: Allow
       Action:
       - rekognition:DetectModerationLabels
@@ -126,11 +126,11 @@ functions:
     - Effect: Allow
       Action:
       - sns:Publish
-      Resource: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
+      Resource: arn:#{AWS::Partition}:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
     environment:
       MinConfidenceParamName: ${self:custom.minConfidenceParamName}
       SrcBucketName: ${self:custom.srcBucketName}
-      AlertTopicArn: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
+      AlertTopicArn: arn:#{AWS::Partition}:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
     events:
     - sqs:
         arn: '#{SrcQueue.Arn}'

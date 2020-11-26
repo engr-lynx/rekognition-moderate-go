@@ -140,7 +140,7 @@ resources:
             Resource: '#{SrcQueue.Arn}'
             Condition:
               ArnLike:
-                aws:SourceArn: arn:aws:s3:::${self:custom.srcBucketName}
+                aws:SourceArn: arn:#{AWS::Partition}:s3:::${self:custom.srcBucketName}
 
     DLQueue:
       Type: AWS::SQS::Queue
@@ -159,7 +159,7 @@ functions:
     - Effect: Allow
       Action:
       - ssm:GetParameter
-      Resource: arn:aws:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter${self:custom.minConfidenceParamName}
+      Resource: arn:#{AWS::Partition}:ssm:#{AWS::Region}:#{AWS::AccountId}:parameter${self:custom.minConfidenceParamName}
     - Effect: Allow
       Action:
       - s3:GetObject
@@ -193,9 +193,9 @@ functions:
     - Effect: Allow
       Action:
       - sns:Publish
-      Resource: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
+      Resource: arn:#{AWS::Partition}:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
     environment:
-      AlertTopicArn: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
+      AlertTopicArn: arn:#{AWS::Partition}:sns:#{AWS::Region}:#{AWS::AccountId}:#{AlertTopic}
     events:
     - sns:
         arn: !Ref ResultTopic
