@@ -31,7 +31,8 @@ custom:
 
   minConfidenceParamName: ${self:custom.appPath}/MinConfidence
 
-  srcBucketName: ${file(./config.json):srcBucket}-#{Stage}
+  srcExpirationInDays: 2
+  srcBucketName: ${self:custom.appNameStage}
 
   srcQueueRetentionPeriod: 172800 # 2 days
   srcQueueMaxReceiveCount: 720 # 0.5 days
@@ -58,6 +59,19 @@ resources:
         Type: String
         Value: '80'
 
+    SrcBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.srcBucketName}
+        NotificationConfiguration:
+          QueueConfigurations:
+          - Event: s3:ObjectCreated:*
+            Queue: '#{SrcQueue.Arn}'
+        LifecycleConfiguration:
+          Rules:
+          - ExpirationInDays: ${self:custom.srcExpirationInDays}
+            Status: Enabled
+
     SrcBucketPolicy:
       Type: AWS::S3::BucketPolicy
       Properties:
@@ -69,7 +83,7 @@ resources:
             - s3:GetObject
             Principal:
               Service: rekognition.amazonaws.com
-            Resource: arn:#{AWS::Partition}:s3:::${self:custom.srcBucketName}/*
+            Resource: '#{SrcBucket.Arn}/*'
 
     SrcQueue:
       Type: AWS::SQS::Queue
@@ -118,7 +132,7 @@ functions:
     - Effect: Allow
       Action:
       - s3:GetObject
-      Resource: arn:#{AWS::Partition}:s3:::${self:custom.srcBucketName}/*
+      Resource: '#{SrcBucket.Arn}/*'
     - Effect: Allow
       Action:
       - rekognition:DetectModerationLabels
